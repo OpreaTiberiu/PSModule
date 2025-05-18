@@ -1,0 +1,10 @@
+Task 1: PowerShell module
+Create a PowerShell module with the following functions:
+A function that collects operating system information, cpu, memory, and disk space.
+A function that reads user data from a CSV file or object and creates a User object.
+A function that exports the collected information to an XML or JSON file.
+
+
+Task 2: API integration
+Create a function in the PowerShell module that retrieves data from the Fehraltorf region from the public Open-Meteo API and stores it in a database. To do this, use a suitable database connector (e.g. SQL Server).
+Open Meteo Link: https://open-meteo.com/
