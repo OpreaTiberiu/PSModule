@@ -35,8 +35,8 @@ function Export-Info {
         }
     }
     catch {
-        Write-Error "Failed to export object to $Format at $Path. Error: $_"
-        exit 1
+        Write-Log "Failed to export object to $Format at $Path. Error: $_" -Type Error
+        throw
     }
 }
 
@@ -60,14 +60,14 @@ function Export-ToReadableXmlWriter {
         [string]$Path
     )
 
-    $settings = New-Object System.Xml.XmlWriterSettings
-    $settings.Indent = $true
-    $settings.IndentChars = "  "
-    $settings.NewLineChars = "`r`n"
-    $settings.NewLineHandling = "Replace"
-    $writer = $null
-
     try {
+        $settings = New-Object System.Xml.XmlWriterSettings
+        $settings.Indent = $true
+        $settings.IndentChars = "  "
+        $settings.NewLineChars = "`r`n"
+        $settings.NewLineHandling = "Replace"
+        $writer = $null
+
         $writer = [System.Xml.XmlWriter]::Create($Path, $settings)
         $writer.WriteStartDocument()
         $writer.WriteStartElement("Root")
@@ -83,6 +83,10 @@ function Export-ToReadableXmlWriter {
         $writer.WriteEndElement()
         $writer.WriteEndDocument()
         $writer.Flush()
+    } 
+    catch {
+        Write-Log "Failed to export object to XML at $Path with error: $_" -Type Error
+        throw
     }
     finally {
         if ($writer) {
@@ -111,17 +115,22 @@ function Export-NestedProperty {
         [System.Xml.XmlWriter]$Writer
     )
 
-    if ($InputObject.value -is [System.Collections.IEnumerable] -and -not ($InputObject.value -is [string])) {
-        for ($index=0; $index -le $InputObject.value.Length - 1; $index++) {
-            $writer.WriteStartElement("$($InputObject.Name)_$index")
-            $itemObject = [PSCustomObject]$InputObject.value[$index]
+    try {
+        if ($InputObject.value -is [System.Collections.IEnumerable] -and -not ($InputObject.value -is [string])) {
+            for ($index=0; $index -le $InputObject.value.Length - 1; $index++) {
+                $writer.WriteStartElement("$($InputObject.Name)_$index")
+                $itemObject = [PSCustomObject]$InputObject.value[$index]
 
-            foreach ($prop in $itemObject.PSObject.Properties) {
-                Export-NestedProperty -InputObject $prop -Writer $writer
+                foreach ($prop in $itemObject.PSObject.Properties) {
+                    Export-NestedProperty -InputObject $prop -Writer $writer
+                }
+                $writer.WriteEndElement()
             }
-            $writer.WriteEndElement()
+        } else {
+            $writer.WriteElementString($InputObject.Name, [string]$InputObject.value)
         }
-    } else {
-        $writer.WriteElementString($InputObject.Name, [string]$InputObject.value)
+    } catch {
+        Write-Log "Failed to export nested property with error: $_" -Type Error
+        throw
     }
 }

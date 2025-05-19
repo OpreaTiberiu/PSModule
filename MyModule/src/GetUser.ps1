@@ -14,40 +14,41 @@ function New-UserObject {
         [Object]$InputObject
     )
     
-    $outputUsers = @()
+    try {
+        $outputUsers = @()
 
-    if ($InputObject -is [string] -and (Test-Path $InputObject) -and ($InputObject -like '*.csv')) {
-        try {
-            $data = Import-Csv -Path $InputObject -ErrorAction Stop
-        }
-        catch {
-            Write-Error "Could not parse CSV input: $_"
-            exit 1
-        }
-        foreach ($user in $data) {
-            $userHash = @{}
-
-            foreach ($prop in $user.PSObject.Properties) {
-                $userHash[$prop.Name] = $prop.Value
+        if ($InputObject -is [string] -and (Test-Path $InputObject) -and ($InputObject -like '*.csv')) {
+            try {
+                $data = Import-Csv -Path $InputObject -ErrorAction Stop
             }
-            $outputUsers += [PSCustomObject]$userHash
-        }
-    } elseif ($InputObject -is [System.Collections.IEnumerable] -and -not ($InputObject -is [string])) {
-        foreach ($item in $InputObject) {
-            if ($item -is [hashtable] -or $item -is [PSCustomObject]) {
-                $outputUsers += [PSCustomObject]$item
-            } else {
-                Write-Error "Unknown item type in list: $($item.GetType().Name)"
-
-                exit 1
+            catch {
+                Write-Log "Could not parse CSV input: $_" -Type Error
+                throw
             }
-        }
-    } elseif ($InputObject -is [hashtable] -or $InputObject -is [PSCustomObject]) {
-        $outputUsers += [PSCustomObject]$InputObject
-    } else {
-        Write-Error "Unknown input type: $($InputObject.GetType().Name)"
+            foreach ($user in $data) {
+                $userHash = @{}
 
-        exit 1
+                foreach ($prop in $user.PSObject.Properties) {
+                    $userHash[$prop.Name] = $prop.Value
+                }
+                $outputUsers += [PSCustomObject]$userHash
+            }
+        } elseif ($InputObject -is [System.Collections.IEnumerable] -and -not ($InputObject -is [string])) {
+            foreach ($item in $InputObject) {
+                if ($item -is [hashtable] -or $item -is [PSCustomObject]) {
+                    $outputUsers += [PSCustomObject]$item
+                } else {
+                    throw "Unknown item type in list: $($item.GetType().Name)"
+                }
+            }
+        } elseif ($InputObject -is [hashtable] -or $InputObject -is [PSCustomObject]) {
+            $outputUsers += [PSCustomObject]$InputObject
+        } else {
+            throw "Unknown input type: $($InputObject.GetType().Name)"
+        }
+        return $outputUsers
+    } catch {
+        Write-Log "Failed to create user objects: $_" -Type Error
+        throw
     }
-    return $outputUsers
 }

@@ -23,10 +23,11 @@ function Export-WeatherToSql {
         [string]$DatabaseName = "WeatherDB",
         [string]$TableName = "FehraltorfWeather"
     )
- 
-    $connStr = "Driver={PostgreSQL Unicode};Server=localhost;Port=5432;Database=WeatherDB;Uid=admin;Pwd=admin123;"
+
     $conn = $null
-    $command = @"
+    try {
+        $connStr = "Driver={PostgreSQL Unicode};Server=localhost;Port=5432;Database=WeatherDB;Uid=admin;Pwd=admin123;"
+        $command = @"
 INSERT INTO $TableName (TimeStamp, Temperature, WindSpeed, WindDirection, WeatherCode)
 VALUES (
     '$($Weather.time)',
@@ -36,16 +37,17 @@ VALUES (
     $($Weather.weathercode)
 )
 "@
-
-    try {
         $conn = New-Object System.Data.Odbc.OdbcConnection($connStr)
         $conn.Open()
         $cmd = $conn.CreateCommand()
         $cmd.CommandText = $command
         $cmd.ExecuteNonQuery()
-    } catch {
-        Write-Error "Database insertion failed: $_"
-    } finally {
+    } 
+    catch {
+        Write-Log "Exporting data to Database failed with error: $_"  -Type Error
+        throw
+    }
+    finally {
         if ($conn) {
             $conn.Close()
         }
